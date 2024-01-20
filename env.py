@@ -51,14 +51,23 @@ class CustomEnvironment(ParallelEnv):
         done = False
 
         while not done:
+            reward = 0
             for i, agent in enumerate(self.agents):
-                agent.velocity = -np.sum(self.alpha_matrix[i] * (agent.position - np.array([a.position for a in self.agents])), axis=0)
-                agent.position += agent.velocity
+                agent.set_velocity(
+                    -np.sum(self.alpha_matrix[i] * (agent.position - np.array([a.position for a in self.agents])),
+                            axis=0))
+                system_velocities = np.array([agent.velocity for agent in self.agents])
+                system_std = np.std(system_velocities)
+                reward += 1.0 / (1.0 + system_std)
+
+                agent.set_position(agent.velocity)
 
             # 检查是否所有智能体的速度都足够接近
             done = all(agent.are_velocities_close(self.agents[0]) for agent in self.agents)
 
-        rewards = {f"agent_{i}": 0.0 for i in range(self.num_agents)}
+        reward += 2 * (1.0 / (1.0 + system_std))
+
+        rewards = {f"agent_{i}": reward for i in range(self.num_agents)}
 
         return {f"agent_{i}": agent.position.copy() for i, agent in enumerate(self.agents)}, rewards, done, {}
 
