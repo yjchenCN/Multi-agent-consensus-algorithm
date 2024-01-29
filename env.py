@@ -31,7 +31,7 @@ class Agent:
 
 
 # 初始化参数
-num_agents = 4  # 智能体的数量
+num_agents = 3  # 智能体的数量
 num_iterations = 1000  # 迭代次数
 dt = 0.01  # 时间增量
 alpha = 1  # alpha系数，简化模型中为常数
@@ -43,7 +43,6 @@ agents = [Agent(np.random.rand() * 10) for _ in range(num_agents)]
 agents[0].add_neighbor(agents[1])
 agents[1].add_neighbor(agents[2])
 agents[0].add_neighbor(agents[2])
-agents[0].add_neighbor(agents[3])
 
 
 # 运行模拟
@@ -69,4 +68,3 @@ plt.rcParams['font.sans-serif'] = ['SimHei']  # 指定默认字体为黑体
 plt.rcParams['axes.unicode_minus'] = False  # 解决保存图像时负号 '-' 显示为方块的问题
 
 plt.show()
-
