@@ -1,7 +1,5 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib
-
 
 class Agent:
     def __init__(self, initial_position):
@@ -21,7 +19,7 @@ class Agent:
     def add_neighbor(self, neighbor):
         if neighbor not in self.neighbors:
             self.neighbors.append(neighbor)
-            neighbor.neighbors.append(self)
+            #neighbor.neighbors.append(self)
 
     def update_position(self, dt):
         # 根据给定的速度更新方程来更新位置
@@ -30,19 +28,23 @@ class Agent:
         self.position += self.velocity * dt  # 更新位置
 
 
-# 初始化参数
+     # 初始化参数
 num_agents = 3  # 智能体的数量
 num_iterations = 1000  # 迭代次数
 dt = 0.01  # 时间增量
 alpha = 1  # alpha系数，简化模型中为常数
 
 # 创建智能体并随机初始化位置
-np.random.seed(0)  # 为了可复现性设置随机种子
+np.random.seed(1)  # 为了可复现性设置随机种子
 agents = [Agent(np.random.rand() * 10) for _ in range(num_agents)]
 
 agents[0].add_neighbor(agents[1])
+#agents[1].add_neighbor(agents[0])
 agents[1].add_neighbor(agents[2])
+#agents[2].add_neighbor(agents[1])
 agents[0].add_neighbor(agents[2])
+agents[2].add_neighbor(agents[0])
+
 
 
 # 运行模拟
