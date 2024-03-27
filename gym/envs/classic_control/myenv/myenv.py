@@ -36,7 +36,7 @@ class MyEnv(gym.Env):
         self.observation_space = spaces.Box(low=np.array([0.0, 0.0, 0.0, 0.0, 0], dtype=np.float32), high=np.array([1.0, 1.0, 1.0, 1.0, self.M], dtype=np.float32), shape=(5,))
         self.seed()
         self.viewer = None
-        self.state = None   
+        self.state = None
 
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)

@@ -46,9 +46,12 @@ class Agent:
 
 
 class Consensus(gym.Env):
-    metadata = {'render.modes': ['human']}
+    metadata = {
+        'render.modes': ['human', 'rgb_array'],
+        'video.frames_per_second': 50
+    }
 
-    def __init__(self, num_agents=4, num_iterations=150, dt=0.1):
+    def __init__(self):
         super(Consensus, self).__init__()
         self.num_agents = num_agents
         self.num_iterations = num_iterations
@@ -58,10 +61,14 @@ class Consensus(gym.Env):
 
         # 定义观测空间和动作空间
         # 观测空间为所有智能体的位置
-        self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(self.num_agents,), dtype=np.float32)
+        self.observation_space = spaces.Box(low=np.array([0.0, 0.0, 0.0], dtype=np.float32), high=np.array([0.01, 10, 8,], dtype=np.float32), shape=(3,1))
         # 动作空间为智能体的位置更新，这里简化为每个智能体的位移
         self.action_space = spaces.Box(low=-1, high=1, shape=(self.num_agents,), dtype=np.float32)
+        self.seed()
 
+    def seed(self, seed=None):
+        self.np_random, seed = seeding.np_random(seed)
+        return [seed]
 
     def step(self, action):
         # 应用动作更新智能体位置
