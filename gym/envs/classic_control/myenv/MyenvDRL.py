@@ -10,7 +10,7 @@ class Consensus(gym.Env):
     metadata = {'render.modes': ['human']}
 
     def __init__(self, num_agents=4, num_iterations=150, dt=0.1):
-        super(SwarmEnv, self).__init__()
+        super(Consensus, self).__init__()
 
         self.num_agents = num_agents
         self.num_iterations = num_iterations
