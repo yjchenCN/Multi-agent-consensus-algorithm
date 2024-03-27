@@ -2,7 +2,6 @@ import numpy as np
 import gym
 from gym import spaces
 
-
 class Consensus(gym.Env):
     """
     群体智能体环境，模拟智能体根据邻居位置的相对距离更新自己的位置
@@ -11,7 +10,6 @@ class Consensus(gym.Env):
 
     def __init__(self, num_agents=4, num_iterations=150, dt=0.1):
         super(Consensus, self).__init__()
-
         self.num_agents = num_agents
         self.num_iterations = num_iterations
         self.dt = dt
@@ -37,14 +35,14 @@ class Consensus(gym.Env):
             self.delta_positions = []
             self.communication_times = []  # 记录每次通信的时间
 
-    def define_neighbors(self):
-        # 定义邻居关系
-        self.agents[0].add_neighbor(self.agents[1])
-        self.agents[0].add_neighbor(self.agents[2])
-        self.agents[0].add_neighbor(self.agents[3])
-        self.agents[2].add_neighbor(self.agents[3])
-        self.agents[1].add_neighbor(self.agents[3])
-        self.agents[2].add_neighbor(self.agents[1])
+        def define_neighbors(self):
+            # 定义邻居关系
+            self.agents[0].add_neighbor(self.agents[1])
+            self.agents[0].add_neighbor(self.agents[2])
+            self.agents[0].add_neighbor(self.agents[3])
+            self.agents[2].add_neighbor(self.agents[3])
+            self.agents[1].add_neighbor(self.agents[3])
+            self.agents[2].add_neighbor(self.agents[1])
 
     def step(self, action):
         # 应用动作更新智能体位置
