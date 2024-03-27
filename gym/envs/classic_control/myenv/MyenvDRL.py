@@ -1,11 +1,51 @@
 import numpy as np
 import gym
 from gym import spaces
+import matplotlib.pyplot as plt
+from typing import Optional, Union
+import random
+from gym.error import DependencyNotInstalled
+import itertools
+import math
+from gym import spaces, logger
+from gym.utils import seeding
+
+class Agent:
+    def __init__(self, initial_position, index):
+        self.position = initial_position
+        self.index = index
+        self.neighbors = []
+        self.last_broadcast_position = self.position  #存储了该智能体最近一次广播的位置
+        self.trigger_points = []
+        self.u_i = 0
+        self.c_0 = 0.0001
+        self.c_1 = 0.2499
+        self.alpha = 0.4669
+
+    def add_neighbor(self, neighbor):
+        if neighbor not in self.neighbors:
+            self.neighbors.append(neighbor)
+            neighbor.neighbors.append(self)
+
+    def is_neighbor(self, agent):
+        return agent in self.neighbors
+    
+    def update_position(self, t, dt):
+        e_i = self.last_broadcast_position - self.position
+        trigger_condition = np.abs(e_i) - (self.c_0 + self.c_1 * np.exp(- self.alpha * t))
+        
+        # 如果事件触发函数大于等于0，则更新位置
+        if trigger_condition >= 0 or t == 0:
+            self.u_i = - sum(self.is_neighbor(neighbor) * (self.last_broadcast_position - neighbor.last_broadcast_position) for neighbor in self.neighbors)
+            self.position += self.u_i * dt
+            self.last_broadcast_position = self.position
+            #记录触发的相关信息
+            self.trigger_points.append((t, self.position))
+        else:
+            self.position += self.u_i * dt
+
 
 class Consensus(gym.Env):
-    """
-    群体智能体环境，模拟智能体根据邻居位置的相对距离更新自己的位置
-    """
     metadata = {'render.modes': ['human']}
 
     def __init__(self, num_agents=4, num_iterations=150, dt=0.1):
@@ -22,27 +62,6 @@ class Consensus(gym.Env):
         # 动作空间为智能体的位置更新，这里简化为每个智能体的位移
         self.action_space = spaces.Box(low=-1, high=1, shape=(self.num_agents,), dtype=np.float32)
 
-    class Agent:
-        def __init__(self, initial_position, index):
-            self.position = initial_position
-            self.index = index
-            self.neighbors = []
-            self.last_broadcast_position = self.position  # 存储了该智能体最近一次广播的位置
-            self.sigma = np.random.uniform(0, 1)
-            self.alpha = np.random.uniform(0, 1 / max(1, len(self.neighbors)))  # 另一个触发函数参数
-            self.trigger_points = []
-            self.trigger_points2 = []  # 用于记录事件触发时的位置
-            self.delta_positions = []
-            self.communication_times = []  # 记录每次通信的时间
-
-        def define_neighbors(self):
-            # 定义邻居关系
-            self.agents[0].add_neighbor(self.agents[1])
-            self.agents[0].add_neighbor(self.agents[2])
-            self.agents[0].add_neighbor(self.agents[3])
-            self.agents[2].add_neighbor(self.agents[3])
-            self.agents[1].add_neighbor(self.agents[3])
-            self.agents[2].add_neighbor(self.agents[1])
 
     def step(self, action):
         # 应用动作更新智能体位置
