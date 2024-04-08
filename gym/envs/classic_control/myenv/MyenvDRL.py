@@ -124,5 +124,3 @@ class Consensus(gym.Env):
                 self.trigger_points.append((t, self.position))
             else:
                 self.position += self.u_i * dt
-
-

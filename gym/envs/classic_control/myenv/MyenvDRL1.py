@@ -10,6 +10,7 @@ import math
 from gym import spaces, logger
 from gym.utils import seeding
 
+
 class Consensus1(gym.Env):
     metadata = {
         'render.modes': ['human', 'rgb_array'],

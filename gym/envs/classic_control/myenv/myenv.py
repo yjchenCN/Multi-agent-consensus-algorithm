@@ -49,7 +49,7 @@ class MyEnv(gym.Env):
         for indEV in range(self.N):
             X = SM[indEV]
             indices = np.where(self.form == indEV + 1)[0]
-            Y = self.Delta[int(indices)][int(self.col)-1]
+            Y = self.Delta[int(indices)][int(self.col)-1] # type: ignore
             SC[indEV%4]=np.squeeze(X-Y)
         #print("sm",SC)
         return SC
@@ -65,8 +65,8 @@ class MyEnv(gym.Env):
         err_msg = "%r (%s) invalid" % (action, type(action))
         assert self.action_space.contains(action), err_msg
         self.form=self.formaction[:,action]  #提取当前动作索引所对应的向量
-        self.SOC=self.state[:self.N]
-        self.remRsq=self.state[self.N]
+        self.SOC=self.state[:self.N] # type: ignore
+        self.remRsq=self.state[self.N] # type: ignore
         self.col=self.M-self.remRsq+1
         self.SOC=self.clcSM()  #计算soc
         self.remRsq=self.remRsq-1
