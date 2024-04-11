@@ -1,4 +1,6 @@
+from turtle import pen
 import numpy as np
+from pyparsing import original_text_for
 import gym
 from gym import spaces
 import matplotlib.pyplot as plt
@@ -15,10 +17,10 @@ class Consensus(gym.Env):
         'render.modes': ['human', 'rgb_array'],
         'video.frames_per_second': 50
     }
-    def __init__(self, num_agents=5, num_iterations=800, dt=0.1):
+    def __init__(self, num_agents=5, num_iterations=200, dt=0.1):
         self.c0_range = np.arange(0, 0.001, 0.00001)
-        self.c1_range = np.arange(0, 10, 0.1)
-        self.alpha_range = np.arange(0, 8, 0.1)
+        self.c1_range = np.arange(0, 8, 0.1)
+        self.alpha_range = np.arange(0, 2, 0.01)
         # 动作空间定义为c0, c1, alpha组合的索引
         self.action_space = spaces.Discrete(len(self.c0_range) * len(self.c1_range) * len(self.alpha_range))
         self.observation_space = spaces.Box(low=-1.0, high=1.0, shape=(num_agents,), dtype=np.float32)
@@ -30,7 +32,7 @@ class Consensus(gym.Env):
         self.agents = [self.Agent(np.random.uniform(-1, 1), i) for i in range(self.num_agents)]
         self.time_step = 0
         self.init_neighbors()
-        self.epsilon = 0.001
+        self.epsilon = 0.005
         
     def init_neighbors(self):
         self.agents[0].add_neighbor(self.agents[1])
@@ -40,7 +42,8 @@ class Consensus(gym.Env):
         self.agents[3].add_neighbor(self.agents[4])
         
     def reset(self):
-        initial_positions = np.linspace(-1, 1, self.num_agents)
+        #initial_positions = np.linspace(-1, 1, self.num_agents)
+        initial_positions = [0.55, 0.4, -0.05, -0.1, -0.7]
         self.agents = [self.Agent(pos, i) for i, pos in enumerate(initial_positions)]  #固定智能体的位置
         #self.agents = [self.Agent(np.random.uniform(-1, 1), i) for i in range(self.num_agents)]  #随机智能体的位置
         self.init_neighbors()
@@ -68,28 +71,29 @@ class Consensus(gym.Env):
         while self.current_iteration < self.num_iterations:
             for agent in self.agents:
                 agent.update_position(self.current_iteration, self.dt, c_0 , c_1, alpha)
-            
+
             # 检查所有智能体与其邻居之间的位置差是否都小于epsilon
             all_within_epsilon = all(all(abs(agent.position - neighbor.position) < self.epsilon for neighbor in agent.neighbors) for agent in self.agents)
 
             if all_within_epsilon:
-                if not epsilon_violated:  # 如果之前没有位置差大于epsilon的情况
+                if epsilon_violated:
+                    # 如果之前的状态是大于epsilon的，现在变为小于epsilon，更新时间为当前迭代次数
                     time_to_reach_epsilon = self.current_iteration
-                else:  # 如果之前位置差大于epsilon，现在又小于epsilon，更新时间
-                    epsilon_violated = False
+                    epsilon_violated = False  # 更新状态为没有违反epsilon条件
             else:
                 epsilon_violated = True  # 标记存在位置差大于epsilon的情况
+                time_to_reach_epsilon = None  # 由于存在违反条件的情况，所以设置为None
 
             self.current_iteration += 1
 
-        # 循环结束后，如果time_to_reach_epsilon不为None，则计算在此之前的触发次数
-        if all_within_epsilon:
-            trigger_counts = sum(len(agent.trigger_points) for agent in self.agents)
+        # 计算奖励
+        if time_to_reach_epsilon is not None:
+            # 计算0到time_to_reach_epsilon时间段内的触发次数
+            trigger_counts = sum(len([point for point in agent.trigger_points if point[0] <= time_to_reach_epsilon]) for agent in self.agents)
+            reward = - time_to_reach_epsilon - trigger_counts
         else:
-            trigger_counts = 1000  #设为很大数
-
-        # 计算奖励，可以根据需要进一步调整
-        reward = (self.num_iterations - (time_to_reach_epsilon if time_to_reach_epsilon is not None else self.num_iterations)) - trigger_counts
+            trigger_counts = -1000
+            reward = trigger_counts
         
         done = True  # 因为我们运行了完整的迭代，所以这一步总是结束的
         return self.get_state(), reward, done, {"time_to_reach_epsilon": time_to_reach_epsilon, "trigger_counts": trigger_counts}
@@ -124,3 +128,5 @@ class Consensus(gym.Env):
                 self.trigger_points.append((t, self.position))
             else:
                 self.position += self.u_i * dt
+
+#env = Consensus()
