@@ -16,8 +16,7 @@ class Consensus_F(gym.Env):
         'render.modes': ['human', 'rgb_array'],
         'video.frames_per_second': 50
     }
-    def __init__(self, num_agents=5, num_iterations=200, dt=0.1):
-        # 动作空间定义为c0, c1, alpha组合的索引
+    def __init__(self, num_agents=5, num_iterations=30, dt=0.3):
         self.num_agents = num_agents
         self.action_space = spaces.Discrete(2**num_agents)
         self.observation_space = spaces.Box(low=-1.0, high=1.0, shape=(num_agents,), dtype=np.float32)
@@ -32,6 +31,9 @@ class Consensus_F(gym.Env):
         self.time_to_reach_epsilon = None  # 达到epsilon条件的时间
         self.epsilon_violated = True  # 标记是否存在智能体位置差大于epsilon的情况
         self.all_within_epsilon = False
+        #print(self.action_matrix[24])
+        #print(self.action_matrix[26])
+        print(np.sum(self.action_matrix[31]))
 
     def calculate_action_matrix(self, num_agents):
         # 生成所有可能动作的矩阵，每行是一个可能的动作组合
@@ -87,6 +89,8 @@ class Consensus_F(gym.Env):
 
         triggers = self.action_matrix[action]
 
+        trigger_count = np.sum(triggers)
+
         for i, agent in enumerate(self.agents):
             if triggers[i] == 1:
                 trigger = 1
@@ -113,7 +117,7 @@ class Consensus_F(gym.Env):
         if not done:
             average_position_difference = self.compute_average_position_difference()
             # 将平均位置差的负值作为奖励，差值越小（智能体越接近），奖励越高
-            reward = - average_position_difference
+            reward = - np.abs(average_position_difference) - trigger_count * 0.01 * self.num_iterations
         else:
             # 计算奖励
             if self.time_to_reach_epsilon is not None:
@@ -121,7 +125,12 @@ class Consensus_F(gym.Env):
                 trigger_counts = sum(len([point for point in agent.trigger_points if point[0] <= self.time_to_reach_epsilon]) for agent in self.agents)
                 reward = -self.time_to_reach_epsilon - 2 * trigger_counts
             else:
-                reward = -2000
+                trigger_counts = 200
+                reward = -5000
+            '''a = np.random.uniform(-30,1)
+            if a > 0:
+                print(trigger_counts)
+                print(self.time_to_reach_epsilon)'''
         
         return self.get_state(), reward, done, {}
 
@@ -153,4 +162,4 @@ class Consensus_F(gym.Env):
             else:
                 self.position += self.u_i * dt
 
-#env = Consensus_F()
+env = Consensus_F()

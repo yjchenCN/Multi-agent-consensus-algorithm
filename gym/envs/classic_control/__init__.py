@@ -12,3 +12,4 @@ from gym.envs.classic_control.myenv.myenvMA import MultiAgentEnv
 from gym.envs.classic_control.myenv.MyenvDRL import Consensus
 from gym.envs.classic_control.myenv.MyenvDRL1 import Consensus1
 from gym.envs.classic_control.myenv.MyenvDRL_F import Consensus_F
+from gym.envs.classic_control.myenv.MyenvDRL_C import Consensus_C
