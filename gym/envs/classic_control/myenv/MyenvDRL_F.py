@@ -16,7 +16,7 @@ class Consensus_F(gym.Env):
         'render.modes': ['human', 'rgb_array'],
         'video.frames_per_second': 50
     }
-    def __init__(self, num_agents=5, num_iterations=30, dt=0.3):
+    def __init__(self, num_agents=5, num_iterations=50, dt=0.1):
         self.num_agents = num_agents
         self.action_space = spaces.Discrete(2**num_agents)
         self.observation_space = spaces.Box(low=-1.0, high=1.0, shape=(num_agents,), dtype=np.float32)
@@ -25,15 +25,18 @@ class Consensus_F(gym.Env):
         self.dt = dt
         self.current_iteration = 0
         initial_positions = [0.55, 0.4, -0.05, -0.1, -0.7]
+        #initial_positions = [0.5, 0.51, 0.52, 0.53, 0.54]
         self.agents = [self.Agent(pos, i) for i, pos in enumerate(initial_positions)]
         self.init_neighbors()
         self.epsilon = 0.005
         self.time_to_reach_epsilon = None  # 达到epsilon条件的时间
         self.epsilon_violated = True  # 标记是否存在智能体位置差大于epsilon的情况
         self.all_within_epsilon = False
-        #print(self.action_matrix[24])
+        self.total_trigger_count = 0
+        self.time_to_reach_epsilon_changes = 0  # 添加一个计数器来记录 time_to_reach_epsilon 被修改的次数
+        #print(self.action_matrix)
         #print(self.action_matrix[26])
-        print(np.sum(self.action_matrix[31]))
+        #print(np.sum(self.action_matrix[0]))
 
     def calculate_action_matrix(self, num_agents):
         # 生成所有可能动作的矩阵，每行是一个可能的动作组合
@@ -54,6 +57,7 @@ class Consensus_F(gym.Env):
     def reset(self):
         #initial_positions = np.linspace(-1, 1, self.num_agents)
         initial_positions = [0.55, 0.4, -0.05, -0.1, -0.7]
+        #initial_positions = [0.5, 0.51, 0.52, 0.53, 0.54]
         self.agents = [self.Agent(pos, i) for i, pos in enumerate(initial_positions)]  #固定智能体的位置
         #self.agents = [self.Agent(np.random.uniform(-1, 1), i) for i in range(self.num_agents)]  #随机智能体的位置
         self.init_neighbors()
@@ -90,13 +94,10 @@ class Consensus_F(gym.Env):
         triggers = self.action_matrix[action]
 
         trigger_count = np.sum(triggers)
+        self.total_trigger_count += trigger_count
 
         for i, agent in enumerate(self.agents):
-            if triggers[i] == 1:
-                trigger = 1
-            else:
-                trigger = 0
-            agent.update_position(self.current_iteration, self.dt, trigger)
+            agent.update_position(self.current_iteration, self.dt, triggers[i])
 
         # 检查所有智能体与其邻居之间的位置差是否都小于epsilon
         self.all_within_epsilon = all(all(abs(agent.position - neighbor.position) < self.epsilon for neighbor in agent.neighbors) for agent in self.agents)
@@ -106,34 +107,41 @@ class Consensus_F(gym.Env):
                 # 如果之前的状态是大于epsilon的，现在变为小于epsilon，更新时间为当前迭代次数
                 self.time_to_reach_epsilon = self.current_iteration
                 self.epsilon_violated = False  # 更新状态为没有违反epsilon条件
+                self.time_to_reach_epsilon_changes += 1
         else:
             self.epsilon_violated = True  # 标记存在位置差大于epsilon的情况
             self.time_to_reach_epsilon = None  # 由于存在违反条件的情况，所以设置为None
 
         self.current_iteration += 1
 
-        done = self.current_iteration == self.num_iterations
+        done = self.current_iteration >= self.num_iterations
 
         if not done:
             average_position_difference = self.compute_average_position_difference()
-            # 将平均位置差的负值作为奖励，差值越小（智能体越接近），奖励越高
-            reward = - np.abs(average_position_difference) - trigger_count * 0.01 * self.num_iterations
+            if self.all_within_epsilon and trigger_count == 0:
+                reward = 10
+            elif self.all_within_epsilon:
+                reward = 5 - trigger_count
+            else:
+                reward = - 20 * np.abs(average_position_difference) - trigger_count * 0.1 * self.num_iterations
+            #reward = 0
+            
         else:
             # 计算奖励
             if self.time_to_reach_epsilon is not None:
                 # 计算0到time_to_reach_epsilon时间段内的触发次数
                 trigger_counts = sum(len([point for point in agent.trigger_points if point[0] <= self.time_to_reach_epsilon]) for agent in self.agents)
-                reward = -self.time_to_reach_epsilon - 2 * trigger_counts
+                reward = 200 - self.time_to_reach_epsilon - trigger_counts
             else:
                 trigger_counts = 200
-                reward = -5000
+                reward = -2000
             '''a = np.random.uniform(-30,1)
             if a > 0:
                 print(trigger_counts)
                 print(self.time_to_reach_epsilon)'''
         
         return self.get_state(), reward, done, {}
-
+    
 
 
     class Agent:

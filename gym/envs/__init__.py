@@ -102,8 +102,9 @@ register(
 register(
     id='Consensus-v2',
     entry_point='gym.envs.classic_control:Consensus_F',
-    max_episode_steps=200,
-    reward_threshold=195.0,
+    max_episode_steps=2000,
+    reward_threshold=-16.910,
+    
 )
 
 register(

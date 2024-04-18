@@ -43,7 +43,7 @@ class Consensus(gym.Env):
         
     def reset(self):
         #initial_positions = np.linspace(-1, 1, self.num_agents)
-        initial_positions = [0.55, 0.4, -0.05, -0.1, -0.7]
+        initial_positions = [0.5, 0.51, 0.52, 0.53, 0.54]
         self.agents = [self.Agent(pos, i) for i, pos in enumerate(initial_positions)]  #固定智能体的位置
         #self.agents = [self.Agent(np.random.uniform(-1, 1), i) for i in range(self.num_agents)]  #随机智能体的位置
         self.init_neighbors()
