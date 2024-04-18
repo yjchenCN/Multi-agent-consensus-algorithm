@@ -16,7 +16,7 @@ class Consensus1(gym.Env):
         'render.modes': ['human', 'rgb_array'],
         'video.frames_per_second': 50
     }
-    def __init__(self, num_agents = 4, num_iterations = 800, dt = 0.1, L = np.array([[2, -1, -1, 0],
+    def __init__(self, num_agents = 4, num_iterations = 200, dt = 0.1, L = np.array([[2, -1, -1, 0],
                                                                                      [-1, 2, -1, 0],
                                                                                      [-1, -1, 3, -1],
                                                                                      [0, 0, -1, 1]])):
@@ -31,7 +31,9 @@ class Consensus1(gym.Env):
         self.num_iterations = num_iterations
         self.dt = dt
         self.current_iteration = 0
-        self.agents = [self.Agent(np.random.uniform(-1, 1), i) for i in range(self.num_agents)]
+        self.initial_positions = [0.5, 0.51, 0.52, 0.53, 0.54]
+        self.agents = [self.Agent(pos, i) for i, pos in enumerate(self.initial_positions)] 
+        #self.agents = [self.Agent(np.random.uniform(-1, 1), i) for i in range(self.num_agents)]
         self.time_step = 0
         self.L = L
         self.init_neighbors()
@@ -46,8 +48,10 @@ class Consensus1(gym.Env):
                     self.agents[i].add_neighbor(self.agents[j])
         
     def reset(self):
-        initial_positions = np.linspace(-1, 1, self.num_agents)
-        self.agents = [self.Agent(pos, i) for i, pos in enumerate(initial_positions)]  #固定智能体的位置
+        #initial_positions = [0.5, 0.51, 0.52, 0.53, 0.54]
+        self.agents = [self.Agent(pos, i) for i, pos in enumerate(self.initial_positions)] 
+        #initial_positions = np.linspace(-1, 1, self.num_agents)
+        #self.agents = [self.Agent(pos, i) for i, pos in enumerate(initial_positions)]  #固定智能体的位置
         #self.agents = [self.Agent(np.random.uniform(-1, 1), i) for i in range(self.num_agents)]  #随机智能体的位置
         self.init_neighbors()
         self.time_step = 0
