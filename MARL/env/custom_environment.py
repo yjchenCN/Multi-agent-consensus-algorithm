@@ -12,7 +12,7 @@ class CustomEnvironment(ParallelEnv):
         'name': 'custom_environment_demo'
     }
     
-    def __init__(self, num_agents=5, num_iterations=50, dt=0.1):
+    def __init__(self, num_agents=5, num_iterations=50, dt=0.5):
         self.agents = ["agent_" + str(i) for i in range(num_agents)]
         self.possible_agents = self.agents[:]
         self.agent_name_mapping = dict(zip(self.agents, list(range(num_agents))))
@@ -88,7 +88,7 @@ class CustomEnvironment(ParallelEnv):
             return 0
     
     def step(self, actions):
-        #print("1")
+        #print(actions)
         triggers = np.array([actions[agent] for agent in self.agents])
         trigger_count = np.sum(triggers)
         self.total_trigger_count += trigger_count
@@ -111,7 +111,7 @@ class CustomEnvironment(ParallelEnv):
         done = self.current_iteration >= self.num_iterations
         
         rewards = {}
-        if not done:
+        '''if not done:
             average_position_difference = self.compute_average_position_difference()
             for agent in self.agents:
                 if self.all_within_epsilon and trigger_count == 0:
@@ -126,7 +126,30 @@ class CustomEnvironment(ParallelEnv):
                     trigger_counts = sum(len([point for point in agent_obj.trigger_points if point[0] <= self.time_to_reach_epsilon]) for agent_obj in self.agent_objs)
                     rewards[agent] = 200 - self.time_to_reach_epsilon - trigger_counts
                 else:
-                    rewards[agent] = -2000
+                    rewards[agent] = -2000'''
+        
+        if not done:
+            average_position_difference = self.compute_average_position_difference()
+            for agent in self.agents:
+                if self.time_to_reach_epsilon is not None:
+                    rewards[agent] = 5 - trigger_count
+                    #print("1")
+                else:
+                    #print(average_position_difference)
+                    # 将平均位置差的负值作为奖励，差值越小（智能体越接近），奖励越高
+                    rewards[agent] = - np.abs(average_position_difference)
+                    #rewards[agent] = 0
+                    #print(- 5 * np.abs(average_position_difference))
+        else:
+            if self.time_to_reach_epsilon is not None:
+                trigger_counts = sum(len([point for point in agent.trigger_points if point[0] <= self.time_to_reach_epsilon]) for agent in self.agent_objs)
+                global_reward = 100 - self.time_to_reach_epsilon - 2 * trigger_counts - self.total_trigger_count
+                #print("111")
+            else:
+                global_reward = -200
+            
+            for agent in self.agents:
+                rewards[agent] = global_reward
 
         observations = {agent: self.get_observation(agent) for agent in self.agents}
         dones = {agent: done for agent in self.agents}
@@ -173,4 +196,4 @@ class CustomEnvironment(ParallelEnv):
             else:
                 self.position += self.u_i * dt
 
-env = CustomEnvironment()
+#env = CustomEnvironment()
