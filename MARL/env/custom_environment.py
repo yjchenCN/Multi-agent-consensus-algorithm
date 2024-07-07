@@ -53,6 +53,7 @@ class CustomEnvironment(ParallelEnv):
         self.all_within_epsilon = False
         self.total_trigger_count = 0
         self.time_to_reach_epsilon_changes = 0
+        self.time_to_reach_epsilon = None
         
         observations = {agent: self.get_observation(agent) for agent in self.agents}
         return observations
@@ -108,8 +109,9 @@ class CustomEnvironment(ParallelEnv):
             self.time_to_reach_epsilon = None
         
         self.current_iteration += 1
+        #print(self.current_iteration)
         done = self.current_iteration >= self.num_iterations
-        
+        #print(done)
         rewards = {}
         '''if not done:
             average_position_difference = self.compute_average_position_difference()
@@ -132,26 +134,28 @@ class CustomEnvironment(ParallelEnv):
             average_position_difference = self.compute_average_position_difference()
             for agent in self.agents:
                 if self.time_to_reach_epsilon is not None:
-                    rewards[agent] = 5 - trigger_count
+                    rewards[agent] = 30 - 5 * trigger_count
                     #print("1", 50 - 5 * trigger_count)
                 else:
                     #print(average_position_difference)
                     # 将平均位置差的负值作为奖励，差值越小（智能体越接近），奖励越高
-                    rewards[agent] = - np.abs(average_position_difference)
+                    rewards[agent] = -5 - 5 * np.abs(average_position_difference)
                     #rewards[agent] = 0
                     #print("2", - 10 * np.abs(average_position_difference))
+
         else:
+            #print("!!!")
             if self.time_to_reach_epsilon is not None:
                 trigger_counts = sum(len([point for point in agent.trigger_points if point[0] <= self.time_to_reach_epsilon]) for agent in self.agent_objs)
-                global_reward = 2500 - self.time_to_reach_epsilon - 2 * trigger_counts - self.total_trigger_count
+                global_reward = 5000 - self.time_to_reach_epsilon  - self.total_trigger_count
                 #print(self.time_to_reach_epsilon)
                 #print(2 * trigger_counts)
                 #print(self.total_trigger_count)
                 #print("1")
             else:
-                global_reward = -1000
+                global_reward = -10000
                 #print("2")
-            self.total_trigger_count = 0
+            #self.total_trigger_count = 0
             
             for agent in self.agents:
                 rewards[agent] = global_reward
@@ -188,7 +192,7 @@ class CustomEnvironment(ParallelEnv):
             if neighbor not in self.neighbors:
                 self.neighbors.append(neighbor)
                 neighbor.neighbors.append(self)
-    
+
         def is_neighbor(self, agent):
             return agent in self.neighbors
 
