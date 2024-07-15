@@ -138,9 +138,9 @@ class CustomEnvironment(ParallelEnv):
             for agent in self.agents:
                 if self.time_to_reach_epsilon is not None:
                     if actions[agent] == 1:
-                        rewards[agent] = 0  # 动作为1，给予惩罚
+                        rewards[agent] = 5  # 动作为1，给予惩罚
                     else:
-                        rewards[agent] = 10  # 动作为0，给予奖励
+                        rewards[agent] = 15  # 动作为0，给予奖励
                     #rewards[agent] = 30 - 5 * trigger_count
                     #print("1", 50 - 5 * trigger_count)
 
@@ -164,7 +164,7 @@ class CustomEnvironment(ParallelEnv):
             #print("!!!!!!")
             if self.time_to_reach_epsilon is not None:
                 trigger_counts = sum(len([point for point in agent.trigger_points if point[0] <= self.time_to_reach_epsilon]) for agent in self.agent_objs)
-                global_reward = 2000 - self.time_to_reach_epsilon  
+                global_reward = 500 - self.time_to_reach_epsilon  
                 #- self.total_trigger_count
                 #global_reward = 1000
                 #print(self.time_to_reach_epsilon)
