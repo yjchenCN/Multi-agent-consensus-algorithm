@@ -43,6 +43,19 @@ class CustomEnvironment(ParallelEnv):
         self.agent_objs[1].add_neighbor(self.agent_objs[2])
         self.agent_objs[2].add_neighbor(self.agent_objs[3])
         self.agent_objs[3].add_neighbor(self.agent_objs[4])
+
+    # def init_neighbors(self):
+    #     self.agent_objs[0].add_neighbor(self.agent_objs[1])
+    #     self.agent_objs[0].add_neighbor(self.agent_objs[2])
+    #     self.agent_objs[0].add_neighbor(self.agent_objs[3])
+    #     self.agent_objs[0].add_neighbor(self.agent_objs[4])
+    #     self.agent_objs[1].add_neighbor(self.agent_objs[2])
+    #     self.agent_objs[1].add_neighbor(self.agent_objs[3])
+    #     self.agent_objs[1].add_neighbor(self.agent_objs[4])
+    #     self.agent_objs[2].add_neighbor(self.agent_objs[3])
+    #     self.agent_objs[2].add_neighbor(self.agent_objs[4])
+    #     self.agent_objs[3].add_neighbor(self.agent_objs[4])
+    
         
     def reset(self, seed=None, options=None):
         initial_positions = [0.55, 0.4, -0.05, -0.1, -0.7]
@@ -89,7 +102,7 @@ class CustomEnvironment(ParallelEnv):
             return 0
     
     def step(self, actions):
-        #print(actions)
+        #print(actions)[1,1,1,1,1]
         triggers = np.array([actions[agent] for agent in self.agents])
         trigger_count = np.sum(triggers)
         #print(triggers)
@@ -99,6 +112,7 @@ class CustomEnvironment(ParallelEnv):
 
         for i, agent in enumerate(self.agent_objs):
             agent.update_position(self.current_iteration, self.dt, triggers[i])
+
         
         self.all_within_epsilon = all(all(abs(agent.position - neighbor.position) < self.epsilon for neighbor in agent.neighbors) for agent in self.agent_objs)
 
@@ -138,9 +152,9 @@ class CustomEnvironment(ParallelEnv):
             for agent in self.agents:
                 if self.time_to_reach_epsilon is not None:
                     if actions[agent] == 1:
-                        rewards[agent] = 5  # 动作为1，给予惩罚
+                        rewards[agent] = 0  # 动作为1，给予惩罚
                     else:
-                        rewards[agent] = 15  # 动作为0，给予奖励
+                        rewards[agent] = 50 * self.current_iteration / self.num_iterations # 动作为0，给予奖励
                     #rewards[agent] = 30 - 5 * trigger_count
                     #print("1", 50 - 5 * trigger_count)
 
@@ -152,7 +166,8 @@ class CustomEnvironment(ParallelEnv):
                     other_positions = [other_agent.position for other_agent in self.agent_objs if other_agent != self.agent_objs[agent_index]]
                     average_position = np.mean(other_positions)
                     position_difference = abs(agent_position - average_position)
-                    rewards[agent] =  -5 - 5 * position_difference  # 当前智能体与所有其他智能体的平均位置之差作为惩罚
+                    rewards[agent] =  - 5 - 5 * position_difference  # 当前智能体与所有其他智能体的平均位置之差作为惩罚
+                    #rewards[agent] =  - 5 - 20 * position_difference
                     #print(position_difference)
                 '''else:
                     #print(average_position_difference)
@@ -164,7 +179,7 @@ class CustomEnvironment(ParallelEnv):
             #print("!!!!!!")
             if self.time_to_reach_epsilon is not None:
                 trigger_counts = sum(len([point for point in agent.trigger_points if point[0] <= self.time_to_reach_epsilon]) for agent in self.agent_objs)
-                global_reward = 500 - self.time_to_reach_epsilon  
+                global_reward = 500 - self.time_to_reach_epsilon
                 #- self.total_trigger_count
                 #global_reward = 1000
                 #print(self.time_to_reach_epsilon)
@@ -172,7 +187,7 @@ class CustomEnvironment(ParallelEnv):
                 #print(self.total_trigger_count)
                 #print("1")
             else:
-                global_reward = -2000
+                global_reward = -3000
                 #print("2")
             #self.total_trigger_count = 0
             
@@ -223,5 +238,7 @@ class CustomEnvironment(ParallelEnv):
                 self.trigger_points.append((t, self.position))
             else:
                 self.position += self.u_i * dt
+
+
 
 #env = CustomEnvironment()
