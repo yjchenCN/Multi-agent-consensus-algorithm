@@ -21,9 +21,9 @@ class Consensus1(gym.Env):
                                                                                     [-1, -1,  3, -1,  0],
                                                                                     [ 0,  0, -1,  2, -1],
                                                                                     [ 0,  0,  0, -1,  1]])):
-        self.c0_range = np.arange(0, 0.001, 0.00001)
-        self.c1_range = np.arange(0, 10, 0.1)
-        self.alpha_range = np.arange(0, 3, 0.1)
+        self.c0_range = np.arange(0, 0.001, 0.0001)
+        self.c1_range = np.arange(0, 2, 0.05)
+        self.alpha_range = np.arange(0, 2, 0.05)
         # 动作空间定义为c0, c1, alpha组合的索引
         self.num_agents = num_agents
         self.action_space = spaces.Discrete(len(self.c0_range) * len(self.c1_range) * len(self.alpha_range))
@@ -32,7 +32,7 @@ class Consensus1(gym.Env):
         self.num_iterations = num_iterations
         self.dt = dt
         self.current_iteration = 0
-        self.initial_positions = [0.5, 0.51, 0.52, 0.53, 0.54]
+        self.initial_positions = [0.55, 0.4, -0.05, -0.1, -0.7]
         self.agents = [self.Agent(pos, i) for i, pos in enumerate(self.initial_positions)] 
         #self.agents = [self.Agent(np.random.uniform(-1, 1), i) for i in range(self.num_agents)]
         self.time_step = 0
@@ -58,7 +58,7 @@ class Consensus1(gym.Env):
         self.time_step = 0
         return self.get_state()
     
-    def get_state(self):
+    def get_state(self): 
         # 可以根据需要设计状态表示
         positions = np.array([agent.position for agent in self.agents])
         return positions

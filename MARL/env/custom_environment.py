@@ -189,7 +189,7 @@ class CustomEnvironment(ParallelEnv):
                 #print(self.total_trigger_count)
                 #print("1")
             else:
-                global_reward = 0
+                global_reward = -5000
                 #print("2")
             #self.total_trigger_count = 0
             

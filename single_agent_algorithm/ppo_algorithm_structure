@@ -1,0 +1,36 @@
+// PPO Algorithm
+digraph {
+	A [label="Initialize policy network π_θ
+and value network V_φ"]
+	B [label="Initialize optimizers
+Adam for π_θ and V_φ"]
+	C [label="Initialize hyperparameters
+γ, λ, ε, etc."]
+	D [label="Reset environment
+and get initial state s_0"]
+	E [label="Sample action from policy π_θ(a_t|s_t)"]
+	F [label="Execute action a_t, observe
+next state, reward, done"]
+	G [label="Store transition in buffer D"]
+	H [label="Update state s_t"]
+	I [label="Compute target R̂_t = r_t + γV_φ(s_t+1)(1 − d_t)"]
+	J [label="Compute TD error δ_t = R̂_t − V_φ(s_t)"]
+	K [label="Compute advantage Â_t using GAE"]
+	L [label="Compute policy loss with
+clipped objective L_CLIP"]
+	M [label="Update policy network"]
+	N [label="Update value network"]
+	A -> B
+	B -> C
+	C -> D
+	D -> E
+	E -> F
+	F -> G
+	G -> H
+	H -> I
+	I -> J
+	J -> K
+	K -> L
+	L -> M
+	M -> N
+}

@@ -60,6 +60,8 @@ class Consensus_F(gym.Env):
         #self.agents = [self.Agent(np.random.uniform(-1, 1), i) for i in range(self.num_agents)]  #随机智能体的位置
         self.init_neighbors()
         self.current_iteration = 0
+        self.total_trigger_count = 0
+        self.u_i = 0
         return self.get_state()
     
     def get_state(self):
@@ -116,12 +118,14 @@ class Consensus_F(gym.Env):
         if not done:
             average_position_difference = self.compute_average_position_difference()
             if self.time_to_reach_epsilon is not None:
-                reward = 5 - trigger_count
+                reward = 15 - 2 * trigger_count
+                
                 #print("t",reward)
             else:
                 #print(average_position_difference)
                 # 将平均位置差的负值作为奖励，差值越小（智能体越接近），奖励越高
-                reward = - 20 * np.abs(average_position_difference)
+                #reward = - 5 * np.abs(average_position_difference)
+                reward = -1 - 5 * average_position_difference
                 #reward = 0
                 #print("a",reward)
         else:
@@ -129,22 +133,25 @@ class Consensus_F(gym.Env):
             if self.time_to_reach_epsilon is not None:
                 # 计算0到time_to_reach_epsilon时间段内的触发次数
                 trigger_counts = sum(len([point for point in agent.trigger_points if point[0] <= self.time_to_reach_epsilon]) for agent in self.agents)
-                reward = 1200 - self.time_to_reach_epsilon - 2 * trigger_counts - self.total_trigger_count
+                #reward = 1500 - self.time_to_reach_epsilon - self.total_trigger_count
+                #eward = 1100 - self.total_trigger_count
+                reward = 0
+                #print(reward)
                 #print(self.time_to_reach_epsilon)
                 #print(2 * trigger_counts)
                 #print(self.total_trigger_count)
                 #print("1")
                 #print()
             else:
-                trigger_counts = 200
-                reward = -2000
+                #trigger_counts = 200
+                reward = 0
             '''a = np.random.uniform(-100,1)
             if a > 0:
                 print(trigger_counts)
                 print(self.time_to_reach_epsilon)
                 print(self.total_trigger_count)'''
             
-            self.total_trigger_count = 0
+            #self.total_trigger_count = 0
         
         return self.get_state(), reward, done, {}
 
@@ -158,6 +165,7 @@ class Consensus_F(gym.Env):
             self.last_broadcast_position = self.position
             self.trigger_points = []
             self.u_i = 0
+            
              
         def add_neighbor(self, neighbor):
             if neighbor not in self.neighbors:
