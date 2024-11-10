@@ -11,6 +11,7 @@ import math
 from gym import spaces, logger
 from gym.utils import seeding
 
+#v2
 class Consensus_F(gym.Env):
     metadata = {
         'render.modes': ['human', 'rgb_array'],
@@ -118,7 +119,8 @@ class Consensus_F(gym.Env):
         if not done:
             average_position_difference = self.compute_average_position_difference()
             if self.time_to_reach_epsilon is not None:
-                reward = 15 - 2 * trigger_count
+                #reward = 15 - 2 * trigger_count
+                reward = 5 + 5 * (5 - 1 * trigger_count)
                 
                 #print("t",reward)
             else:
