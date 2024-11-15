@@ -100,6 +100,37 @@ class DistributedConsensusEnv(gym.Env):
             self.t = self.total_trigger_count
 
         return self.get_observation(0), reward, done, False, {}
+    
+    def render(self, action):
+        """根据动作更新环境，仅更新当前主智能体，其他智能体在模拟中被遍历决策"""
+        main_agent = self.main_agent
+        if self.current_iteration == 0:
+            main_agent.update_position_1(self.dt, trigger=True)
+            # for agent in self.agents:
+            #     if agent != main_agent:
+            #         agent.update_position_formula_with_hold_1(self.dt, self.c_0, self.c_1, self.alpha, self.current_iteration)
+            self.total_trigger_count += 1
+            reward = 0
+        else:
+            position_difference = abs(main_agent.position - main_agent.last_broadcast_position)
+            time_scaling = np.exp(-self.alpha * self.current_iteration * self.dt)
+            threshold = self.c_0 + self.c_1 * time_scaling
+
+            if action == 1:
+                self.total_trigger_count += 1
+                main_agent.update_position(self.dt, trigger=True)
+                reward = 1 if position_difference >= threshold else -1
+            else:
+                main_agent.update_position(self.dt, trigger=False)
+                reward = 1 if position_difference < threshold else -1
+
+        self.current_iteration += 1
+        done = self.current_iteration >= self.num_iterations
+
+        if done:
+            self.t = self.total_trigger_count
+
+        return self.get_observation(0), reward, done, False, {}
 
     class Agent:
         def __init__(self, index, initial_position=0.0):

@@ -209,11 +209,23 @@ class Consensus_D_F(gym.Env):
         plt.figure(figsize=(10, 3))
         for i in range(self.num_agents):
             trigger_times = [t for t in times if actions_over_time[t][i] == 1]
-            plt.scatter(trigger_times, [i + 1] * len(trigger_times), label=f'Agent {i + 1}', s=20)
+            plt.scatter(trigger_times, [i + 1] * len(trigger_times), label=f'Agent {i + 1}', s=20, marker=MarkerStyle('x'))
         plt.xlabel("Times")
         plt.ylabel("Agents")
         plt.yticks(range(1, self.num_agents + 1), [f'Agent {i + 1}' for i in range(self.num_agents)])
         plt.grid()
+        plt.show()
+
+        # 绘制前1000步的触发情况的图像
+        plt.figure(figsize=(10, 3))
+        for i in range(self.num_agents):
+            trigger_times = [t for t in range(min(100, len(actions_over_time))) if actions_over_time[t][i] == 1]
+            plt.scatter(trigger_times, [i + 1] * len(trigger_times), label=f'Agent {i + 1}', s=20, marker=MarkerStyle('x'))
+        plt.xlabel("Times (first 1000 steps)")
+        plt.ylabel("Agents")
+        plt.yticks(range(1, self.num_agents + 1), [f'Agent {i + 1}' for i in range(self.num_agents)])
+        plt.grid()
+        plt.title("Trigger States for First 1000 Steps")
         plt.show()
 
         return actions_over_time
