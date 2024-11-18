@@ -21,8 +21,8 @@ class Consensus_D_F(gym.Env):
         # 动作空间：将动作空间转换为离散类型，大小为 2^num_agents
         self.action_space = spaces.Discrete(2 ** self.num_agents)
 
-        # 观测空间：包含每个智能体与邻居平均位置差
-        self.observation_space = spaces.Box(low=-1.0, high=1.0, shape=(num_agents, max_neighbors + 1), dtype=np.float32)
+        # 观测空间：包含每个智能体与邻居平均位置差，不限制范围
+        self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(num_agents, max_neighbors + 1), dtype=np.float32)
 
         # 初始化智能体和固定的拉普拉斯矩阵
         self.agents = [self.Agent(i) for i in range(self.num_agents)]
@@ -77,7 +77,6 @@ class Consensus_D_F(gym.Env):
                 obs.extend(neighbor_positions)
             obs.extend([0.0] * (self.max_neighbors - len(agent.neighbors)))
             obs = obs[:self.max_neighbors + 1]
-            obs = np.clip(obs, -1.0, 1.0)
             observations.append(obs)
         return np.array(observations, dtype=np.float32)
 
@@ -104,38 +103,17 @@ class Consensus_D_F(gym.Env):
         self.current_iteration += 1
         done = self.current_iteration >= self.num_iterations
 
-        # if not done:
-        #     self.average_difference = self.compute_average_position_difference()
-        #     if self.all_within_epsilon:
-        #         reward = 5 + 30 * (5 - np.sum(triggers))
-        #         self.success += 1
-        #     else:
-        #         reward = reward = - np.clip((10 * np.exp(self.average_difference)), 0, 50)
-        # else:
-        #     if self.all_within_epsilon:
-        #         reward = - 5 * self.total_trigger_count
-        #         self.success += 1000
-        #     else:
-        #         self.success += 0
-        #         reward = -10000 - 5 * self.total_trigger_count
-        #     self.s = self.success
-        #     self.total = self.total_trigger_count
-        #     self.time = self.time_to_reach_epsilon
-
         # 确定是否处于早期阶段或后期阶段
         phase_threshold = self.num_iterations // 4  # 将阶段划分为前50%和后50%
         self.average_difference = self.compute_average_position_difference()
         if not done:
             if self.current_iteration <= phase_threshold:
-                # 早期阶段：注重探索和实现一致性
-                # self.average_difference = self.compute_average_position_difference()
                 if self.all_within_epsilon:
                     reward = 50 + (5 - np.sum(triggers))  # 较大的固定奖励，鼓励实现一致性
                     self.success += 1
                 else:
                     reward = -np.clip((10 * np.exp(self.average_difference)), 0, 50)  # 惩罚差异，但不是太严重
             else:
-                
                 if self.all_within_epsilon:
                     reward = 5 + 30 * (5 - np.sum(triggers))  # 奖励与触发次数减少相关
                     self.success += 1
@@ -150,8 +128,6 @@ class Consensus_D_F(gym.Env):
             self.s = self.success
             self.total = self.total_trigger_count
             self.time = self.time_to_reach_epsilon
-
-
 
         return self.get_observation(), reward, done, False, {}
 

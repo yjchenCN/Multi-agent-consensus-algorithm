@@ -20,7 +20,8 @@ class DistributedConsensusEnv(gym.Env):
 
         # 动作空间和观测空间
         self.action_space = spaces.Discrete(2)
-        self.observation_space = spaces.Box(low=-1.0, high=1.0, shape=(max_neighbors + 1,), dtype=np.float32)
+        #self.observation_space = spaces.Box(low=-1.0, high=1.0, shape=(max_neighbors + 1,), dtype=np.float32)
+        self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(self.max_neighbors + 2,), dtype=np.float32)
 
         # 创建初始主智能体
         self.main_agent = self.Agent(0, initial_position=np.random.uniform(-1, 1))
@@ -59,12 +60,18 @@ class DistributedConsensusEnv(gym.Env):
 
     def get_observation(self, agent_index=0):
         agent = self.main_agent
-        obs = [agent.position]
+        obs = [agent.position]  # 主智能体的位置
         if agent.neighbors:
             neighbor_differences = [(neighbor.position - agent.position) for neighbor in agent.neighbors]
-            neighbor_differences = [np.clip(diff, -1.0, 1.0) for diff in neighbor_differences]
             obs.extend(neighbor_differences)
-        obs.extend([0.0] * (self.max_neighbors - len(agent.neighbors)))
+        
+        # 确保返回的长度是 max_neighbors + 1，填充差异值为 0
+        while len(obs) < self.max_neighbors + 1:
+            obs.append(0.0)
+        
+        # 添加邻居数量作为额外的观测值
+        obs.append(len(agent.neighbors))  # 在观测中加入邻居数量
+
         return np.array(obs, dtype=np.float32)
 
     def step(self, action):
@@ -89,10 +96,22 @@ class DistributedConsensusEnv(gym.Env):
                 main_agent.update_position(self.dt, trigger=False)
                 reward = 2 if position_difference < threshold else 0
 
+            # if action == 1:
+            #     self.total_trigger_count += 1
+            #     main_agent.update_position(self.dt, trigger=True)
+            # else:
+            #     main_agent.update_position(self.dt, trigger=False)
+
+            # if position_difference >= threshold:
+            #     reward = -5 * (position_difference - threshold)
+            # else:
+            #     reward = 2  # 正常奖励值
+
+
+
             for agent in self.agents:
                 if agent != main_agent:
-                    if agent.update_position_formula_with_hold(self.dt, self.c_0, self.c_1, self.alpha, self.current_iteration):
-                        self.total_trigger_count += 1
+                    agent.update_position_formula_with_hold(self.dt, self.c_0, self.c_1, self.alpha, self.current_iteration)
 
         self.current_iteration += 1
         done = self.current_iteration >= self.num_iterations
@@ -166,10 +185,8 @@ class DistributedConsensusEnv(gym.Env):
                 self.u_i = -sum((self.last_broadcast_position - neighbor.last_broadcast_position) for neighbor in self.neighbors)
                 self.position += self.u_i * dt
                 self.last_broadcast_position = self.position
-                return True
             else:
                 self.position += self.u_i * dt
-                return False
 
         def update_position_formula_with_hold_1(self, dt, c_0, c_1, alpha, current_iteration):
             e_i = self.position - self.last_broadcast_position
