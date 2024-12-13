@@ -36,6 +36,7 @@ class Consensus_D_F(gym.Env):
         self.time_to_reach_epsilon = None
         self.epsilon_violated = True
         self.all_within_epsilon = False
+        self.main_agent_index = 0  # 主智能体索引，默认为0
 
     def init_neighbors_random(self):
         """随机生成邻接矩阵，确保没有孤立节点"""
@@ -62,6 +63,34 @@ class Consensus_D_F(gym.Env):
                 if adjacency_matrix[i, j] == 1:
                     agent.add_neighbor(self.agents[j])
 
+    def init_neighbors_fixed(self):
+        """使用固定邻接关系矩阵初始化邻居关系"""
+        # 固定邻接矩阵
+        fixed_adjacency_matrix = np.array([
+            [2, -1, -1,  0,  0],
+            [-1, 2, -1,  0,  0],
+            [-1, -1, 3, -1,  0],
+            [0,  0, -1,  2, -1],
+            [0,  0,  0, -1,  1]
+        ])
+        
+        # 检查矩阵是否符合邻接矩阵要求
+        adjacency_matrix = (fixed_adjacency_matrix != 0).astype(int)
+        np.fill_diagonal(adjacency_matrix, 0)  # 确保对角线为0
+
+        # 保存邻接矩阵和度矩阵
+        degrees = np.sum(adjacency_matrix, axis=1)
+        degree_matrix = np.diag(degrees)
+        self.adjacency_matrix = degree_matrix - adjacency_matrix  # 保存拉普拉斯矩阵
+        self.neighbor_matrix = adjacency_matrix  # 保存邻接矩阵
+
+        # 更新每个智能体的邻居
+        for i, agent in enumerate(self.agents):
+            agent.neighbors.clear()  # 清空之前的邻居关系
+            for j in range(self.num_agents):
+                if adjacency_matrix[i, j] == 1:
+                    agent.add_neighbor(self.agents[j])
+
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
         self.current_iteration = 0
@@ -69,6 +98,7 @@ class Consensus_D_F(gym.Env):
         self.time_to_reach_epsilon = None
         self.epsilon_violated = True
         self.all_within_epsilon = False
+        self.main_agent_index = np.random.randint(0, self.num_agents)  # 随机选择主智能体
 
         # 随机初始化智能体位置并保留一位小数
         self.agents = [
@@ -76,12 +106,14 @@ class Consensus_D_F(gym.Env):
             for i in range(self.num_agents)
         ]
         # 随机初始化邻居关系
-        self.init_neighbors_random()
+        #self.init_neighbors_random()
+        self.init_neighbors_fixed()
         return self.get_observation(), {}
 
     def get_observation(self):
         """生成主智能体的观测值及对应的掩码"""
-        agent = self.agents[0]  # 主智能体
+        #agent = self.agents[0]  # 主智能体
+        agent = self.agents[self.main_agent_index]  # 当前主智能体
         positions = [agent.position]  # 主智能体位置
         mask = [1]  # 主智能体的观测有效
 
@@ -108,7 +140,9 @@ class Consensus_D_F(gym.Env):
 
         # 更新主智能体
         self.total_trigger_count += action
-        self.agents[0].update_position(self.current_iteration, self.dt, action)
+        #self.agents[0].update_position(self.current_iteration, self.dt, action)
+        main_agent = self.agents[self.main_agent_index]
+        main_agent.update_position(self.current_iteration, self.dt, action)
 
         # 更新其他智能体
         for agent in self.agents[1:]:
@@ -131,30 +165,32 @@ class Consensus_D_F(gym.Env):
         # 奖励计算逻辑
         if self.all_within_epsilon:
             if action == 0:
-                reward = 10
+                reward = 20
             else:
-                reward = 2
+                reward = 5
         else:
             distances = [
                 abs(self.agents[0].position - neighbor.position)
                 for neighbor in self.agents[0].neighbors
             ]
-            reward = -10 * sum(distances)
+            reward = -1 -10 * sum(distances)
 
         self.current_iteration += 1
         done = self.current_iteration >= self.num_iterations
 
-        if done:
-            final_avg_position = np.mean([agent.position for agent in self.agents])
-            initial_avg_position = np.mean([agent.initial_position for agent in self.agents])
-            position_shift_penalty = abs(final_avg_position - initial_avg_position)
-            if self.all_within_epsilon:
-                reward = -200 * position_shift_penalty
-            else:
-                reward = -500 -200 * position_shift_penalty
+        # if done:
+        #     final_avg_position = np.mean([agent.position for agent in self.agents])
+        #     initial_avg_position = np.mean([agent.initial_position for agent in self.agents])
+        #     position_shift_penalty = abs(final_avg_position - initial_avg_position)
+        #     if self.all_within_epsilon:
+        #         reward = -100 * position_shift_penalty
+        #     else:
+        #         reward = -500 -100 * position_shift_penalty
 
         self.t = self.total_trigger_count
         return self.get_observation(), reward, done, False, {}
+
+
 
     class Agent:
         def __init__(self, index, initial_position=0.0):
