@@ -55,6 +55,7 @@ class CustomMAEnvironment(ParallelEnv):
         self.agent_objs[2].add_neighbor(self.agent_objs[3])
         self.agent_objs[2].add_neighbor(self.agent_objs[4])
         self.agent_objs[3].add_neighbor(self.agent_objs[4])
+        
     
         
     def reset(self, seed=None, options=None):
@@ -178,7 +179,7 @@ class CustomMAEnvironment(ParallelEnv):
             #print("!!!!!!")
             if self.time_to_reach_epsilon is not None:
                 trigger_counts = sum(len([point for point in agent.trigger_points if point[0] <= self.time_to_reach_epsilon]) for agent in self.agent_objs)
-                global_reward = 5000 - self.time_to_reach_epsilon - self.total_trigger_count 
+                global_reward = 1500 - self.time_to_reach_epsilon - self.total_trigger_count 
                 #- self.total_trigger_count
                 #global_reward = 1000
                 #print(self.time_to_reach_epsilon)
@@ -186,7 +187,7 @@ class CustomMAEnvironment(ParallelEnv):
                 #print(self.total_trigger_count)
                 #print("1")
             else:
-                global_reward = -5000
+                global_reward = -2000
                 #print("2")
             #self.total_trigger_count = 0
             
@@ -216,7 +217,7 @@ class CustomMAEnvironment(ParallelEnv):
         """
         max_possible_neighbors = len(self.agent_objs) - 1  # 所有其他代理
         max_obs_size = max_possible_neighbors + 1  # 包括自身位置
-        return spaces.Box(low=-np.inf, high=np.inf, shape=(max_obs_size,), dtype=np.float32)
+        return spaces.Box(low=-100, high=100, shape=(max_obs_size,), dtype=np.float32)
     
     def action_space(self, agent):
         return spaces.Discrete(2)
