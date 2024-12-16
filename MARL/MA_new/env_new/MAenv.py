@@ -32,6 +32,10 @@ class CustomMAEnvironment(ParallelEnv):
         self.total_trigger_count = 0
         self.time_to_reach_epsilon_changes = 0
         self.max_obs_size = self.compute_max_obs_size()
+
+        # 计算最大邻居数量
+        self.max_neighbors = max(len(agent.neighbors) for agent in self.agent_objs)
+        self.state_dim = 1 + self.max_neighbors  # 每个智能体的状态维度（包括自己和最大邻居数）
     
     def compute_max_obs_size(self):
         max_neighbors = max(len(agent.neighbors) for agent in self.agent_objs)
@@ -73,8 +77,14 @@ class CustomMAEnvironment(ParallelEnv):
         return observations
     
     def get_state(self):
-        positions = np.array([agent.position for agent in self.agent_objs])
-        return positions
+        # 获取每个智能体的状态，按其邻居数动态调整
+        state = []
+        for agent in self.agent_objs:
+            state.append(agent.position)  # 当前智能体的位置
+            for neighbor in agent.neighbors:
+                state.append(neighbor.position)  # 邻居的位置信息
+        return np.array(state)
+
     
     def get_observation(self, agent):
         """
@@ -152,9 +162,9 @@ class CustomMAEnvironment(ParallelEnv):
             for agent in self.agents:
                 if self.time_to_reach_epsilon is not None:
                     if actions[agent] == 1:
-                        rewards[agent] = -5  # 动作为1，给予惩罚
+                        rewards[agent] = 0  # 动作为1，给予惩罚
                     else:
-                        rewards[agent] = 20  # 动作为0，给予奖励
+                        rewards[agent] = 10  # 动作为0，给予奖励
                     #rewards[agent] = 30 - 5 * trigger_count
                     #print("1", 50 - 5 * trigger_count)
 
@@ -166,7 +176,7 @@ class CustomMAEnvironment(ParallelEnv):
                     other_positions = [other_agent.position for other_agent in self.agent_objs if other_agent != self.agent_objs[agent_index]]
                     average_position = np.mean(other_positions)
                     position_difference = abs(agent_position - average_position)
-                    rewards[agent] =  - 20 -  5 * np.abs(average_position_difference) # 当前智能体与所有其他智能体的平均位置之差作为惩罚
+                    rewards[agent] =   -5 -  20 * np.abs(position_difference) # 当前智能体与所有其他智能体的平均位置之差作为惩罚
                     #rewards[agent] =  - 5 - 5 * position_difference
                     #print(position_difference)
                 '''else:
@@ -192,7 +202,7 @@ class CustomMAEnvironment(ParallelEnv):
             #self.total_trigger_count = 0
             
             for agent in self.agents:
-                rewards[agent] = global_reward
+                rewards[agent] = 0
                 #rewards[agent] = 0
 
         observations = {agent: self.get_observation(agent) for agent in self.agents}
@@ -211,13 +221,22 @@ class CustomMAEnvironment(ParallelEnv):
     #     定义观测空间为动态范围（只要值在 -1.0 到 1.0 之间即可）。
     #     """
     #     return spaces.Box(low=-np.inf, high=np.inf, shape=(None,), dtype=np.float32)
+    # def observation_space(self, agent):
+    #     """
+    #     返回最大可能的观测空间，适配固定 Box。
+    #     """
+    #     max_possible_neighbors = len(self.agent_objs) - 1  # 所有其他代理
+    #     max_obs_size = max_possible_neighbors + 1  # 包括自身位置
+    #     return spaces.Box(low=-100, high=100, shape=(max_obs_size,), dtype=np.float32)
+
     def observation_space(self, agent):
         """
-        返回最大可能的观测空间，适配固定 Box。
+        为指定的智能体动态生成观测空间，适配其实际邻居数量。
         """
-        max_possible_neighbors = len(self.agent_objs) - 1  # 所有其他代理
-        max_obs_size = max_possible_neighbors + 1  # 包括自身位置
-        return spaces.Box(low=-100, high=100, shape=(max_obs_size,), dtype=np.float32)
+        agent_index = self.agent_name_mapping[agent]
+        agent_obj = self.agent_objs[agent_index]
+        obs_size = 1 + len(agent_obj.neighbors)  # 包括自身位置 + 邻居位置
+        return spaces.Box(low=-100, high=100, shape=(obs_size,), dtype=np.float32)
     
     def action_space(self, agent):
         return spaces.Discrete(2)
@@ -252,4 +271,11 @@ class CustomMAEnvironment(ParallelEnv):
 
 
 
-#env = CustomEnvironment()
+env = CustomMAEnvironment()
+
+# 打印每个智能体的观测空间形状
+for agent in env.agents:
+    obs_space = env.observation_space(agent)
+    print(f"Agent {agent}: Observation space shape = {obs_space.shape}")
+
+print(env.agents)
