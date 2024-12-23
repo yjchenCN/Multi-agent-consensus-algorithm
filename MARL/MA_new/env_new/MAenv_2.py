@@ -41,12 +41,31 @@ class CustomMAEnvironment2(ParallelEnv):
         max_neighbors = max(len(agent.neighbors) for agent in self.agent_objs)
         return 1 + max_neighbors
 
+    # def init_neighbors(self):
+    #     # 将所有智能体两两相连形成全连接邻居关系，方便一致性控制
+    #     # 若不需要全连接，可根据实际需求修改
+    #     for i in range(len(self.agent_objs)):
+    #         for j in range(i+1, len(self.agent_objs)):
+    #             self.agent_objs[i].add_neighbor(self.agent_objs[j])
+
     def init_neighbors(self):
-        # 将所有智能体两两相连形成全连接邻居关系，方便一致性控制
-        # 若不需要全连接，可根据实际需求修改
-        for i in range(len(self.agent_objs)):
-            for j in range(i+1, len(self.agent_objs)):
-                self.agent_objs[i].add_neighbor(self.agent_objs[j])
+        self.agent_objs[0].add_neighbor(self.agent_objs[1])
+        self.agent_objs[0].add_neighbor(self.agent_objs[2])
+        self.agent_objs[1].add_neighbor(self.agent_objs[2])
+        self.agent_objs[2].add_neighbor(self.agent_objs[3])
+        self.agent_objs[3].add_neighbor(self.agent_objs[4])
+
+    # def init_neighbors(self):
+    #     self.agent_objs[0].add_neighbor(self.agent_objs[1])
+    #     self.agent_objs[0].add_neighbor(self.agent_objs[2])
+    #     self.agent_objs[0].add_neighbor(self.agent_objs[3])
+    #     self.agent_objs[0].add_neighbor(self.agent_objs[4])
+    #     self.agent_objs[1].add_neighbor(self.agent_objs[2])
+    #     self.agent_objs[1].add_neighbor(self.agent_objs[3])
+    #     self.agent_objs[1].add_neighbor(self.agent_objs[4])
+    #     self.agent_objs[2].add_neighbor(self.agent_objs[3])
+    #     self.agent_objs[2].add_neighbor(self.agent_objs[4])
+    #     self.agent_objs[3].add_neighbor(self.agent_objs[4])
 
     def reset(self, seed=None, options=None):
         initial_positions = [0.55, 0.4, -0.05, -0.1, -0.7]

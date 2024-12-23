@@ -1,0 +1,30 @@
+// Multi-Agent Reinforcement Learning Framework
+digraph {
+	E [label=Environment color=lightblue shape=ellipse style=filled]
+	A1 [label="Agent 1" color=lightgreen shape=box style="rounded,filled"]
+	A2 [label="Agent 2" color=lightgreen shape=box style="rounded,filled"]
+	AN [label="Agent N" color=lightgreen shape=box style="rounded,filled"]
+	P1 [label="Policy Network
+(Agent 1)" color=lightyellow shape=box style=filled]
+	P2 [label="Policy Network
+(Agent 2)" color=lightyellow shape=box style=filled]
+	PN [label="Policy Network
+(Agent N)" color=lightyellow shape=box style=filled]
+	T [label="Trajectory Storage
+(Obs, Actions, Rewards)" color=lightpink shape=parallelogram style=filled]
+	G [label="Gradient Update
+(REINFORCE)" color=lightgrey shape=hexagon style=filled]
+	E -> A1
+	E -> A2
+	E -> AN
+	A1 -> P1
+	A2 -> P2
+	AN -> PN
+	P1 -> T
+	P2 -> T
+	PN -> T
+	T -> G
+	G -> P1
+	G -> P2
+	G -> PN
+}
