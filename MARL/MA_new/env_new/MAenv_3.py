@@ -21,8 +21,8 @@ class CustomMAEnvironment3(ParallelEnv):
         self.dt = dt
         self.current_iteration = 0
         
-        initial_positions = [0.55, 0.4, -0.05, -0.1, -0.7]
-        self.agent_objs = [self.Agent(pos, i) for i, pos in enumerate(initial_positions)]
+        self.initial_positions = [0.55, 0.4, -0.05, -0.1, -0.7]
+        self.agent_objs = [self.Agent(pos, i) for i, pos in enumerate(self.initial_positions)]
         self.init_neighbors()
         
         self.epsilon = 0.005
@@ -68,8 +68,9 @@ class CustomMAEnvironment3(ParallelEnv):
     #     self.agent_objs[3].add_neighbor(self.agent_objs[4])
 
     def reset(self, seed=None, options=None):
-        initial_positions = [0.55, 0.4, -0.05, -0.1, -0.7]
-        self.agent_objs = [self.Agent(pos, i) for i, pos in enumerate(initial_positions)]
+        self.initial_positions = [0.55, 0.4, -0.05, -0.1, -0.7]
+        #self.initial_positions = np.round(np.random.uniform(-1, 1, size=5), 2)
+        self.agent_objs = [self.Agent(pos, i) for i, pos in enumerate(self.initial_positions)]
         self.init_neighbors()
         self.current_iteration = 0
         self.epsilon_violated = True
@@ -123,6 +124,8 @@ class CustomMAEnvironment3(ParallelEnv):
         for i, agent in enumerate(self.agent_objs):
             agent.update_position(self.current_iteration, self.dt, triggers[i])
 
+        average_difference = self.compute_average_position_difference()
+
         # 检查是否达到一致性（所有智能体间的差值都小于 epsilon）
         self.all_within_epsilon = all(all(abs(agent.position - neighbor.position) < self.epsilon for neighbor in agent.neighbors) for agent in self.agent_objs)
 
@@ -150,16 +153,37 @@ class CustomMAEnvironment3(ParallelEnv):
                     agent_index = self.agent_name_mapping[agent]
                     agent_obj = self.agent_objs[agent_index]
                     individual_trigger_count = len(agent_obj.trigger_points)
-                    rewards[agent] = 300 - self.time_to_reach_epsilon - individual_trigger_count * 2
+                    rewards[agent] = 1000 - self.time_to_reach_epsilon - individual_trigger_count * 2
             else:
                 # 未能达成一致性
                 # 给一个大的负向奖励
                 for agent in self.agents:
-                    rewards[agent] = -600
+                    rewards[agent] = -800
         else:
             # 回合进行中
-            for agent in self.agents:
-                rewards[agent] = 0
+            threshold = 1.0 * self.epsilon
+            # 可以加入一个随时间递增的惩罚系数，让后期触发更贵
+            time_penalty_factor = 0.01 * self.current_iteration
+
+            for i, agent in enumerate(self.agents):
+                if average_difference > threshold:
+                    # 收敛还早，鼓励触发，让他们赶紧把差距缩小
+                    # 这里给触发一个小的负惩罚或甚至给正值（视情况而定）
+                    if triggers[i] == 1:
+                        # 举例：给予少量负值或正值都可以，这里给 0 表示既不奖不罚
+                        rewards[agent] = 0
+                    else:
+                        rewards[agent] = 0
+                else:
+                    # 进入细调阶段，差值很小，鼓励减少触发
+                    # 对触发给更大的惩罚
+                    if triggers[i] == 1:
+                        # 惩罚可以和时间递增挂钩
+                        rewards[agent] = -(1.0 + time_penalty_factor * 2)
+                    else:
+                        rewards[agent] = 1
+            # for agent in self.agents:
+            #     rewards[agent] = 0
         
         observations = {agent: self.get_observation(agent) for agent in self.agents}
         dones = {agent: done for agent in self.agents}
