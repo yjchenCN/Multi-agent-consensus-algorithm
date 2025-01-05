@@ -1,12 +1,9 @@
-from sympy import AlgebraicField
 from pettingzoo import ParallelEnv
 import numpy as np
 from gym import spaces
-import numpy as np
 
 
-
-class CustomMAEnvironment3(ParallelEnv):
+class CustomMAEnvironment(ParallelEnv):
     metadata = {
         'render.modes': ['human'],
         'name': 'custom_environment_demo'
@@ -31,23 +28,14 @@ class CustomMAEnvironment3(ParallelEnv):
         self.all_within_epsilon = False
         self.total_trigger_count = 0
         self.time_to_reach_epsilon_changes = 0
-        self.max_obs_size = self.compute_max_obs_size()
-
+        
         # 计算最大邻居数量
         self.max_neighbors = max(len(agent.neighbors) for agent in self.agent_objs)
-        self.state_dim = 1 + self.max_neighbors  # 每个智能体的状态维度（包括自己和最大邻居数）
+        # 观测维度：pos部分 + 掩码部分
+        # pos部分 = 1(自己) + max_neighbors(邻居)；mask部分同样长度
+        self.obs_dim = 2 * (1 + self.max_neighbors)
     
-    def compute_max_obs_size(self):
-        max_neighbors = max(len(agent.neighbors) for agent in self.agent_objs)
-        return 1 + max_neighbors
-
-    # def init_neighbors(self):
-    #     # 将所有智能体两两相连形成全连接邻居关系，方便一致性控制
-    #     # 若不需要全连接，可根据实际需求修改
-    #     for i in range(len(self.agent_objs)):
-    #         for j in range(i+1, len(self.agent_objs)):
-    #             self.agent_objs[i].add_neighbor(self.agent_objs[j])
-
+    # 根据需要修改邻居结构，如下只示范局部连接
     def init_neighbors(self):
         self.agent_objs[0].add_neighbor(self.agent_objs[1])
         self.agent_objs[0].add_neighbor(self.agent_objs[2])
@@ -55,23 +43,14 @@ class CustomMAEnvironment3(ParallelEnv):
         self.agent_objs[2].add_neighbor(self.agent_objs[3])
         self.agent_objs[3].add_neighbor(self.agent_objs[4])
 
-    # def init_neighbors(self):
-    #     self.agent_objs[0].add_neighbor(self.agent_objs[1])
-    #     self.agent_objs[0].add_neighbor(self.agent_objs[2])
-    #     self.agent_objs[0].add_neighbor(self.agent_objs[3])
-    #     self.agent_objs[0].add_neighbor(self.agent_objs[4])
-    #     self.agent_objs[1].add_neighbor(self.agent_objs[2])
-    #     self.agent_objs[1].add_neighbor(self.agent_objs[3])
-    #     self.agent_objs[1].add_neighbor(self.agent_objs[4])
-    #     self.agent_objs[2].add_neighbor(self.agent_objs[3])
-    #     self.agent_objs[2].add_neighbor(self.agent_objs[4])
-    #     self.agent_objs[3].add_neighbor(self.agent_objs[4])
-
     def reset(self, seed=None, options=None):
         self.initial_positions = [0.55, 0.4, -0.05, -0.1, -0.7]
-        #self.initial_positions = np.round(np.random.uniform(-1, 1, size=5), 2)
+        # 如果想随机初始位置，可以使用：
+        # self.initial_positions = np.round(np.random.uniform(-1, 1, size=5), 2)
+        
         self.agent_objs = [self.Agent(pos, i) for i, pos in enumerate(self.initial_positions)]
         self.init_neighbors()
+
         self.current_iteration = 0
         self.epsilon_violated = True
         self.all_within_epsilon = False
@@ -81,27 +60,96 @@ class CustomMAEnvironment3(ParallelEnv):
         
         observations = {agent: self.get_observation(agent) for agent in self.agents}
         return observations
-    
-    def get_state(self):
-        # 获取每个智能体的状态
-        state = []
-        for agent in self.agent_objs:
-            state.append(agent.position)
-            for neighbor in agent.neighbors:
-                state.append(neighbor.position)
-        return np.array(state)
 
-    
     def get_observation(self, agent):
         """
-        获取指定代理的动态观测，包括自身和邻居位置。
+        生成“统一维度 + 掩码”的观测:
+        - 前 half: 自己位置 + 邻居位置(若不足max_neighbors则补0)
+        - 后 half: mask标识(1表示该位置存在邻居信息，0表示不存在)
         """
         agent_index = self.agent_name_mapping[agent]
         agent_obj = self.agent_objs[agent_index]
-        neighbors_positions = [neighbor.position for neighbor in agent_obj.neighbors]
-        obs = np.array([agent_obj.position] + neighbors_positions, dtype=np.float32)
-        return obs
-    
+
+        # 1. 收集自身与邻居的位置
+        positions = [agent_obj.position]
+        for neighbor in agent_obj.neighbors:
+            positions.append(neighbor.position)
+        # 如果邻居数 < max_neighbors，则用 0 填充
+        while len(positions) < 1 + self.max_neighbors:
+            positions.append(0.0)
+
+        # 2. 构建mask向量（与positions长度相同）
+        #   自己这一个位置一定是1（可以表示为有效项），邻居有几个就在前几个位置写1，剩下写0
+        mask = [1] * (1 + len(agent_obj.neighbors))
+        while len(mask) < 1 + self.max_neighbors:
+            mask.append(0)
+        
+        # 3. 整合 positions + mask
+        obs_array = np.array(positions + mask, dtype=np.float32)
+        return obs_array
+
+    def step(self, actions):
+        triggers = np.array([actions[agent] for agent in self.agents])
+        trigger_count = np.sum(triggers)
+        self.total_trigger_count += trigger_count
+
+        # 更新每个智能体的位置
+        for i, agent in enumerate(self.agent_objs):
+            agent.update_position(self.current_iteration, self.dt, triggers[i])
+
+        average_difference = self.compute_average_position_difference()
+
+        # 判断收敛情况
+        self.all_within_epsilon = all(all(abs(agent.position - neighbor.position) < self.epsilon 
+                                          for neighbor in agent.neighbors) for agent in self.agent_objs)
+
+        if self.all_within_epsilon:
+            if self.epsilon_violated:
+                self.time_to_reach_epsilon = self.current_iteration
+                self.epsilon_violated = False
+        else:
+            self.epsilon_violated = True
+            self.time_to_reach_epsilon = None
+
+        self.current_iteration += 1
+        done = self.current_iteration >= self.num_iterations
+
+        rewards = {}
+
+        if done:
+            # 回合结束
+            if self.time_to_reach_epsilon is not None:
+                # 成功达成一致性
+                for agent in self.agents:
+                    agent_index = self.agent_name_mapping[agent]
+                    agent_obj = self.agent_objs[agent_index]
+                    individual_trigger_count = len(agent_obj.trigger_points)
+                    rewards[agent] = 1000 - self.time_to_reach_epsilon - individual_trigger_count * 2
+            else:
+                # 未能达成一致性
+                for agent in self.agents:
+                    rewards[agent] = -800
+        else:
+            # 回合中
+            threshold = 1.0 * self.epsilon
+            time_penalty_factor = 0.01 * self.current_iteration
+            for i, agent in enumerate(self.agents):
+                if average_difference > threshold:
+                    # 差距大，鼓励更多触发(此处给触发和不触发都为0作为示例)
+                    rewards[agent] = 0
+                else:
+                    # 差距小，鼓励减少触发
+                    if triggers[i] == 1:
+                        rewards[agent] = -(1.0 + time_penalty_factor * 3)
+                    else:
+                        rewards[agent] = 1
+
+        observations = {agent: self.get_observation(agent) for agent in self.agents}
+        dones = {agent: done for agent in self.agents}
+        infos = {agent: {} for agent in self.agents}
+
+        return observations, rewards, dones, infos
+
     def compute_average_position_difference(self):
         total_difference = 0
         count = 0
@@ -115,92 +163,20 @@ class CustomMAEnvironment3(ParallelEnv):
         else:
             return 0
     
-    def step(self, actions):
-        triggers = np.array([actions[agent] for agent in self.agents])
-        trigger_count = np.sum(triggers)
-        self.total_trigger_count += trigger_count
-
-        # 更新智能体位置
-        for i, agent in enumerate(self.agent_objs):
-            agent.update_position(self.current_iteration, self.dt, triggers[i])
-
-        average_difference = self.compute_average_position_difference()
-
-        # 检查是否达到一致性（所有智能体间的差值都小于 epsilon）
-        self.all_within_epsilon = all(all(abs(agent.position - neighbor.position) < self.epsilon for neighbor in agent.neighbors) for agent in self.agent_objs)
-
-        if self.all_within_epsilon:
-            if self.epsilon_violated:
-                # 第一次达到一致性时刻
-                self.time_to_reach_epsilon = self.current_iteration
-                self.epsilon_violated = False
-        else:
-            self.epsilon_violated = True
-            self.time_to_reach_epsilon = None
-
-        self.current_iteration += 1
-        done = self.current_iteration >= self.num_iterations
-
-        rewards = {}
-        
-        if done:
-            # 回合结束
-            if self.time_to_reach_epsilon is not None:
-                # 成功达成一致性
-                # 全局奖励基于收敛时间和触发总数
-                # 越早达成一致性、触发越少，奖励越高
-                for agent in self.agents:
-                    agent_index = self.agent_name_mapping[agent]
-                    agent_obj = self.agent_objs[agent_index]
-                    individual_trigger_count = len(agent_obj.trigger_points)
-                    rewards[agent] = 1000 - self.time_to_reach_epsilon - individual_trigger_count * 2
-            else:
-                # 未能达成一致性
-                # 给一个大的负向奖励
-                for agent in self.agents:
-                    rewards[agent] = -800
-        else:
-            # 回合进行中
-            threshold = 1.0 * self.epsilon
-            # 可以加入一个随时间递增的惩罚系数，让后期触发代价更大
-            time_penalty_factor = 0.01 * self.current_iteration
-
-            for i, agent in enumerate(self.agents):
-                if average_difference > threshold:
-                    # 收敛还早，鼓励触发，让他们赶紧把差距缩小
-                    # 这里给触发一个小的负惩罚或甚至给正值
-                    if triggers[i] == 1:
-                        # 这里给 0 表示既不奖不罚
-                        rewards[agent] = 0
-                    else:
-                        rewards[agent] = 0
-                else:
-                    # 进入细调阶段，差值很小，鼓励减少触发
-                    # 对触发给更大的惩罚
-                    if triggers[i] == 1:
-                        # 惩罚可以和时间递增挂钩
-                        rewards[agent] = -(1.0 + time_penalty_factor * 3)
-                    else:
-                        rewards[agent] = 1
-            # for agent in self.agents:
-            #     rewards[agent] = 0
-        
-        observations = {agent: self.get_observation(agent) for agent in self.agents}
-        dones = {agent: done for agent in self.agents}
-        infos = {agent: {} for agent in self.agents}
-        
-        return observations, rewards, dones, infos
-
-    
     def render(self, mode='human'):
         positions = [agent.position for agent in self.agent_objs]
         print(f"Positions: {positions}")
     
     def observation_space(self, agent):
-        agent_index = self.agent_name_mapping[agent]
-        agent_obj = self.agent_objs[agent_index]
-        obs_size = 1 + len(agent_obj.neighbors)
-        return spaces.Box(low=-100, high=100, shape=(obs_size,), dtype=np.float32)
+        """
+        统一观测维度: 2 * (1 + max_neighbors)
+        """
+        return spaces.Box(
+            low=-np.inf, 
+            high=np.inf, 
+            shape=(self.obs_dim,), 
+            dtype=np.float32
+        )
     
     def action_space(self, agent):
         return spaces.Discrete(2)
@@ -224,21 +200,30 @@ class CustomMAEnvironment3(ParallelEnv):
 
         def update_position(self, t, dt, trigger):
             if trigger == 1 or t == 0:
-                # 触发更新控制输入 u_i
-                self.u_i = -sum((self.last_broadcast_position - neighbor.last_broadcast_position) for neighbor in self.neighbors if self.is_neighbor(neighbor))
+                self.u_i = -sum((self.last_broadcast_position - neighbor.last_broadcast_position) 
+                                for neighbor in self.neighbors if self.is_neighbor(neighbor))
                 self.position += self.u_i * dt
                 self.last_broadcast_position = self.position
                 self.trigger_points.append((t, self.position))
             else:
-                # 不触发则根据上一次的输入继续演化
                 self.position += self.u_i * dt
 
 
-# 以下为简单测试代码（不属于环境本身的一部分）
+# 简单测试
+if __name__ == "__main__":
+    env = CustomMAEnvironment()
+    for agent in env.agents:
+        obs_space = env.observation_space(agent)
+        print(f"Agent {agent}: Observation space shape = {obs_space.shape}")
+    
+    # 检查一下reset返回的观测维度是否吻合
+    obs = env.reset()
+    for agent, ob in obs.items():
+        print(agent, ob, ob.shape)
 
-env = CustomMAEnvironment3()
-for agent in env.agents:
-    obs_space = env.observation_space(agent)
-    print(f"Agent {agent}: Observation space shape = {obs_space.shape}")
-
-print(env.agents)
+    # 简单走一步
+    test_actions = {agent: 1 for agent in env.agents}
+    obs, rew, dones, infos = env.step(test_actions)
+    print("Step result:")
+    for agent in env.agents:
+        print(agent, "obs:", obs[agent], "reward:", rew[agent], "done:", dones[agent])
