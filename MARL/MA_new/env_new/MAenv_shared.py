@@ -44,9 +44,9 @@ class CustomMAEnvironment(ParallelEnv):
         self.agent_objs[3].add_neighbor(self.agent_objs[4])
 
     def reset(self, seed=None, options=None):
-        self.initial_positions = [0.55, 0.4, -0.05, -0.1, -0.7]
+        #self.initial_positions = [0.55, 0.4, -0.05, -0.1, -0.7]
         # 如果想随机初始位置，可以使用：
-        # self.initial_positions = np.round(np.random.uniform(-1, 1, size=5), 2)
+        self.initial_positions = np.round(np.random.uniform(-1, 1, size=5), 2)
         
         self.agent_objs = [self.Agent(pos, i) for i, pos in enumerate(self.initial_positions)]
         self.init_neighbors()
